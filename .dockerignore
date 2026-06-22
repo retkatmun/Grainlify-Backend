@@ -1,0 +1,50 @@
+# Version control
+.git/
+.gitignore
+
+# Environment & secrets — never bake into the image
+.env
+.env.*
+*.env
+secrets/
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Local dev tooling
+tmp/
+vendor/
+.air.toml
+run-dev.sh
+
+# Build artifacts
+bin/
+dist/
+build/
+api
+worker
+migrate
+/out
+
+# Editor & OS noise
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Test files (not needed at runtime)
+*_test.go
+testdata/
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Logs
+*.log
+logs/

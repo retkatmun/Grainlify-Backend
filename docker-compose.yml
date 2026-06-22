@@ -1,0 +1,83 @@
+services:
+  # ── Infrastructure ───────────────────────────────────────────────────────────
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: grainlify
+      POSTGRES_PASSWORD: grainlify
+      POSTGRES_DB: grainlify
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U grainlify"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  nats:
+    image: nats:2-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8222/healthz || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ── Application ──────────────────────────────────────────────────────────────
+
+  api:
+    build:
+      context: .
+      target: runtime
+      args:
+        TARGET: api
+    image: grainlify-api:local
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      # Override to point at the compose-managed postgres and nats services.
+      DB_URL: postgres://grainlify:grainlify@postgres:5432/grainlify?sslmode=disable
+      NATS_URL: nats://nats:4222
+      AUTO_MIGRATE: "true"
+      APP_ROLE: api
+    depends_on:
+      postgres:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/ready || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
+  worker:
+    build:
+      context: .
+      target: runtime
+      args:
+        TARGET: worker
+    image: grainlify-worker:local
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DB_URL: postgres://grainlify:grainlify@postgres:5432/grainlify?sslmode=disable
+      NATS_URL: nats://nats:4222
+      APP_ROLE: worker
+    depends_on:
+      postgres:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

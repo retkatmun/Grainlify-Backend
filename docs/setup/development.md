@@ -138,3 +138,66 @@ make lint
 ```
 
 The lint configuration is in `.golangci.yml`. Existing legacy findings are explicitly excluded there so new changes can be checked without forcing a broad cleanup in the first linting PR.
+
+## Docker Compose (fully containerised stack)
+
+Runs the API, worker, Postgres, and NATS together — no local Go toolchain or database required.
+
+### Prerequisites
+
+- [Docker Desktop](https://docs.docker.com/get-docker/) ≥ 24 (includes Compose v2)
+
+### First-time setup
+
+```bash
+# Copy the env template — compose reads .env automatically
+cp .env.example .env
+# Edit .env and fill in GitHub OAuth, JWT_SECRET, etc.
+# DB_URL and NATS_URL are overridden by compose; you can leave them blank.
+```
+
+### Start the stack
+
+```bash
+docker compose up --build
+```
+
+This will:
+1. Build the `api` and `worker` images from the repo root using the multi-stage `Dockerfile`.
+2. Start Postgres (with a persistent volume) and NATS.
+3. Run database migrations automatically (`AUTO_MIGRATE=true`).
+4. Serve the API at **http://localhost:8080**.
+
+### Common commands
+
+```bash
+# Start in the background
+docker compose up -d --build
+
+# Tail logs for a specific service
+docker compose logs -f api
+
+# Stop and remove containers (data volume is preserved)
+docker compose down
+
+# Stop and destroy all data
+docker compose down -v
+
+# Rebuild after source changes
+docker compose up --build api
+```
+
+### Build targets
+
+The `Dockerfile` accepts a `TARGET` build arg (`api` or `worker`) to select which `cmd/` entrypoint to compile. Compose passes this automatically; to build either image manually:
+
+```bash
+docker build --build-arg TARGET=api    -t grainlify-api:local .
+docker build --build-arg TARGET=worker -t grainlify-worker:local .
+```
+
+### Security notes
+
+- The runtime image (`alpine:3.21`) contains no build toolchain.
+- The binary runs as uid **10001** (non-root).
+- Secrets are never baked into the image; they are injected at runtime via `env_file` / environment variables.

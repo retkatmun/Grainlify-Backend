@@ -86,3 +86,31 @@ which air
 
 
 
+
+---
+
+## Alternative: Docker Compose (one-command local stack)
+
+If you prefer not to install Go or Postgres locally, Docker Compose wires everything up automatically.
+
+```bash
+# 1. Copy the env template
+cp .env.example .env
+# Fill in GitHub OAuth credentials, JWT_SECRET, etc.
+# DB_URL and NATS_URL are set automatically by compose.
+
+# 2. Build images and start all services
+docker compose up --build
+```
+
+The API will be available at **http://localhost:8080** once the healthcheck at `/ready` returns `200`.
+
+Stop the stack with `Ctrl+C`, or in the background:
+
+```bash
+docker compose up -d --build   # start detached
+docker compose down            # stop (data preserved)
+docker compose down -v         # stop + delete data volume
+```
+
+See the [Development Guide](development.md#docker-compose-fully-containerised-stack) for more detail.
